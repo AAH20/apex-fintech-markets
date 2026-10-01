@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apex FinTech Markets | Architecture & Module Integration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --bg-surface: #0f1422;
+      --bg-surface-elevated: #161e31;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(6, 182, 212, 0.3);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --cyan-glow: #06b6d4;
+      --purple-glow: #a855f7;
+      --emerald-glow: #10b981;
+      --amber-glow: #f59e0b;
+      --rose-glow: #f43f5e;
+      --blue-glow: #3b82f6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .ambient-bg {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 85% 25%, rgba(168, 85, 247, 0.07) 0%, transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+    }
+
+    .container { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 32px 24px 80px 24px; }
+
+    header { border-bottom: 1px solid var(--border-color); padding-bottom: 28px; margin-bottom: 32px; display: flex; flex-direction: column; gap: 16px; }
+
+    .badge-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.03); }
+    .badge.cyan { border-color: rgba(6, 182, 212, 0.3); color: var(--cyan-glow); background: rgba(6, 182, 212, 0.06); }
+    .badge.purple { border-color: rgba(168, 85, 247, 0.3); color: var(--purple-glow); background: rgba(168, 85, 247, 0.06); }
+    .badge.emerald { border-color: rgba(16, 185, 129, 0.3); color: var(--emerald-glow); background: rgba(16, 185, 129, 0.06); }
+    .badge.amber { border-color: rgba(245, 158, 11, 0.3); color: var(--amber-glow); background: rgba(245, 158, 11, 0.06); }
+
+    .header-title-row { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px; }
+
+    h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .subtitle { color: var(--text-muted); font-size: 15px; max-width: 960px; margin-top: 6px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+
+    .stat-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px 20px; }
+
+    .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+
+    .stat-val { font-size: 26px; font-weight: 800; color: #fff; font-family: 'JetBrains Mono', monospace; }
+
+    .tab-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 32px; border-bottom: 1px solid var(--border-color); }
+
+    .tab-btn { background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 14px; font-weight: 600; padding: 12px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s ease; white-space: nowrap; }
+    .tab-btn:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.04); }
+    .tab-btn.active { color: #ffffff; background: var(--bg-surface-elevated); border: 1px solid var(--border-accent); box-shadow: 0 4px 14px rgba(6, 182, 212, 0.12); }
+
+    .panel { display: none; animation: fadeIn 0.3s ease; }
+    .panel.active { display: block; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .glass-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 14px; padding: 24px; margin-bottom: 24px; backdrop-filter: blur(12px); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); }
+    .glass-card:hover { border-color: rgba(255, 255, 255, 0.15); }
+
+    .card-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+    .mermaid-box { background: #090d16; border: 1px solid var(--border-color); border-radius: 12px; padding: 28px 20px; overflow-x: auto; text-align: center; margin: 16px 0; }
+
+    .module-tag { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-muted); margin-left: 8px; }
+
+    .desc-text { color: var(--text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+
+    .node-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .node-chip { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.03); color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .node-chip.cyan { border-color: rgba(6, 182, 212, 0.3); color: var(--cyan-glow); }
+    .node-chip.purple { border-color: rgba(168, 85, 247, 0.3); color: var(--purple-glow); }
+    .node-chip.emerald { border-color: rgba(16, 185, 129, 0.3); color: var(--emerald-glow); }
+    .node-chip.amber { border-color: rgba(245, 158, 11, 0.3); color: var(--amber-glow); }
+
+    footer { border-top: 1px solid var(--border-color); padding-top: 24px; margin-top: 60px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; color: var(--text-dim); font-size: 13px; }
+
+    @media (max-width: 768px) {
+      .container { padding: 20px 16px 60px 16px; }
+      h1 { font-size: 24px; }
+      .header-title-row { flex-direction: column; align-items: flex-start; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .tab-nav { gap: 4px; }
+      .tab-btn { padding: 10px 14px; font-size: 13px; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .stat-val { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-bg"></div>
+  <div class="container">
+
+    <header>
+      <div class="badge-bar">
+        <span class="badge cyan">Apex FinTech Markets</span>
+        <span class="badge purple">13 Core Modules</span>
+        <span class="badge emerald">Production-Grade</span>
+        <span class="badge amber">MiFID II / Basel III / EMIR</span>
+      </div>
+      <div class="header-title-row">
+        <div>
+          <h1>Apex FinTech Markets Architecture</h1>
+          <p class="subtitle">Comprehensive institutional trading, risk management, payments, and compliance infrastructure. Market making, HFT, AMM, execution algorithms, VaR, kill switches, payment rails, cross-chain bridges, settlement, fraud detection, and immutable audit trails.</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Core Modules</div>
+        <div class="stat-val" style="color: var(--cyan-glow);">13</div>
+        <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Python classes & engines</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Trading Engines</div>
+        <div class="stat-val" style="color: var(--purple-glow);">4</div>
+        <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">MM, HFT, AMM, Execution</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Risk & Compliance</div>
+        <div class="stat-val" style="color: var(--emerald-glow);">4</div>
+        <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">VaR, MiFID II, Kill Switch, Audit</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Payments & Chain</div>
+        <div class="stat-val" style="color: var(--amber-glow);">5</div>
+        <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Rails, Bridges, Settlement, Fraud</div>
+      </div>
+    </div>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('tab-trading')">📈 Trading & Market Making</button>
+      <button class="tab-btn" onclick="switchTab('tab-risk')">🛡️ Risk & Compliance</button>
+      <button class="tab-btn" onclick="switchTab('tab-payments')">💳 Payments & Cross-Chain</button>
+      <button class="tab-btn" onclick="switchTab('tab-integration')">🔗 Integration Architecture</button>
+    </div>
+
+    <!-- TAB 1: Trading & Market Making -->
+    <div id="tab-trading" class="panel active">
+
+      <div class="glass-card">
+        <div class="card-title">📊 Market Making Engine <span class="module-tag">market_making.py</span></div>
+        <p class="desc-text">Three quantitative models power the market-making engine: Avellaneda-Stoikov for optimal spread quoting, Almgren-Chriss for execution scheduling, and Glosten-Milgrom for adverse selection pricing. The MarketMakingEngine orchestrates quote generation, inventory management, and execution scheduling.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph MM["Market Making Engine"]
+        MME["MarketMakingEngine<br/>Orchestrator"]
+        AS["AvellanedaStoikov<br/>Optimal Spread Quoting"]
+        AC["AlmgrenChriss<br/>Execution Scheduling"]
+        GM["GlostenMilgrom<br/>Adverse Selection Pricing"]
+        QG["QuoteGenerator<br/>Protocol"]
+        IM["InventoryManager<br/>Protocol"]
+    end
+    MME -->|"delegates to"| AS
+    MME -->|"delegates to"| AC
+    MME -->|"delegates to"| GM
+    MME -.->|"implements"| QG
+    MME -.->|"implements"| IM
+    AS -->|"produces"| QG
+    AC -->|"schedules"| MME
+    GM -->|"updates"| IM
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">AvellanedaStoikov</span>
+          <span class="node-chip cyan">AlmgrenChriss</span>
+          <span class="node-chip cyan">GlostenMilgrom</span>
+          <span class="node-chip purple">MarketMakingEngine</span>
+          <span class="node-chip emerald">QuoteGenerator</span>
+          <span class="node-chip emerald">InventoryManager</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">⚡ HFT Infrastructure <span class="module-tag">hft_infrastructure.py</span></div>
+        <p class="desc-text">Ultra-low-latency order matching and market data processing. The MatchingEngine processes orders against the OrderBook with price-time priority. FeedHandler ingests real-time market data, and FeedToEngineBridge connects the feed layer to the matching layer.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph HFT["HFT Infrastructure"]
+        FH["FeedHandler<br/>Market Data Ingestion"]
+        SFH["SimulatedFeedHandler<br/>Backtesting Feed"]
+        OB["OrderBook<br/>Price-Time Priority"]
+        ME["MatchingEngine<br/>Order Matching"]
+        FTEB["FeedToEngineBridge<br/>Feed-to-Engine Bridge"]
+    end
+    FH -->|"streams ticks"| FTEB
+    SFH -->|"simulates ticks"| FTEB
+    FTEB -->|"forwards events"| ME
+    ME -->|"matches against"| OB
+    OB -->|"updates"| ME
+    ME -->|"emits trades"| FTEB
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">FeedHandler</span>
+          <span class="node-chip cyan">SimulatedFeedHandler</span>
+          <span class="node-chip purple">MatchingEngine</span>
+          <span class="node-chip purple">OrderBook</span>
+          <span class="node-chip emerald">FeedToEngineBridge</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">🔄 Automated Market Maker <span class="module-tag">amm.py</span></div>
+        <p class="desc-text">Decentralized exchange liquidity provision with constant product (x*y=k) and concentrated liquidity (Uniswap V3-style) AMMs. DynamicFeeManager adjusts fees based on volatility, and ImpermanentLossManager tracks LP position value divergence.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph AMM["AMM Engine"]
+        CP["ConstantProductAMM<br/>x * y = k"]
+        CL["ConcentratedLiquidityAMM<br/>Tick-Based Liquidity"]
+        DFM["DynamicFeeManager<br/>Volatility-Adjusted Fees"]
+        ILM["ImpermanentLossManager<br/>LP Value Tracking"]
+        AF["AMMFactory<br/>Pool Creation"]
+    end
+    AF -->|"creates"| CP
+    AF -->|"creates"| CL
+    CP -->|"queries"| DFM
+    CL -->|"queries"| DFM
+    CP -->|"tracks"| ILM
+    CL -->|"tracks"| ILM
+    DFM -->|"fee signal"| CP
+    DFM -->|"fee signal"| CL
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">ConstantProductAMM</span>
+          <span class="node-chip cyan">ConcentratedLiquidityAMM</span>
+          <span class="node-chip purple">DynamicFeeManager</span>
+          <span class="node-chip purple">ImpermanentLossManager</span>
+          <span class="node-chip emerald">AMMFactory</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">📋 Execution Algorithms <span class="module-tag">execution_algorithms.py</span></div>
+        <p class="desc-text">Institutional order execution with TWAP (time-weighted), VWAP (volume-weighted), and POV (percentage of volume) strategies. SmartOrderRouter dispatches orders across venues, and ExecutionManager orchestrates the full lifecycle.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph EX["Execution Algorithms"]
+        EA["ExecutionAlgorithm<br/>Abstract Base"]
+        TWAP["TWAPAlgorithm<br/>Time-Weighted"]
+        VWAP["VWAPAlgorithm<br/>Volume-Weighted"]
+        POV["POVAlgorithm<br/>% of Volume"]
+        SOR["SmartOrderRouter<br/>Venue Routing"]
+        EM["ExecutionManager<br/>Lifecycle Orchestrator"]
+    end
+    EA -->|"extended by"| TWAP
+    EA -->|"extended by"| VWAP
+    EA -->|"extended by"| POV
+    EM -->|"schedules"| TWAP
+    EM -->|"schedules"| VWAP
+    EM -->|"schedules"| POV
+    TWAP -->|"routes via"| SOR
+    VWAP -->|"routes via"| SOR
+    POV -->|"routes via"| SOR
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">TWAPAlgorithm</span>
+          <span class="node-chip cyan">VWAPAlgorithm</span>
+          <span class="node-chip cyan">POVAlgorithm</span>
+          <span class="node-chip purple">SmartOrderRouter</span>
+          <span class="node-chip emerald">ExecutionManager</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: Risk & Compliance -->
+    <div id="tab-risk" class="panel">
+
+      <div class="glass-card">
+        <div class="card-title">📉 Risk Management & VaR <span class="module-tag">risk_management.py</span></div>
+        <p class="desc-text">Three VaR methodologies: Historical (empirical distribution), Parametric (variance-covariance), and Monte Carlo (simulated paths). StressTester runs scenario shocks, and ScenarioAnalyzer aggregates results across market conditions.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph RM["Risk Management"]
+        RC["RiskCalculator<br/>Abstract Base"]
+        HVaR["HistoricalVaR<br/>Empirical Distribution"]
+        PVaR["ParametricVaR<br/>Variance-Covariance"]
+        MCVaR["MonteCarloVaR<br/>Simulated Paths"]
+        ST["StressTester<br/>Scenario Shocks"]
+        SA["ScenarioAnalyzer<br/>Multi-Scenario Analysis"]
+    end
+    RC -->|"implemented by"| HVaR
+    RC -->|"implemented by"| PVaR
+    RC -->|"implemented by"| MCVaR
+    ST -->|"runs"| HVaR
+    ST -->|"runs"| PVaR
+    ST -->|"runs"| MCVaR
+    HVaR -->|"feeds"| SA
+    PVaR -->|"feeds"| SA
+    MCVaR -->|"feeds"| SA
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">HistoricalVaR</span>
+          <span class="node-chip cyan">ParametricVaR</span>
+          <span class="node-chip cyan">MonteCarloVaR</span>
+          <span class="node-chip purple">StressTester</span>
+          <span class="node-chip emerald">ScenarioAnalyzer</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">📜 Regulatory Compliance <span class="module-tag">compliance.py</span></div>
+        <p class="desc-text">MiFID II RTS 6/27/28 reporting for algorithmic trading transparency, Basel III FRTB-SA for market risk capital, EMIR for derivative trade reporting, and MAR for market abuse surveillance.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph COMP["Regulatory Compliance"]
+        MIFID["MiFIDIICompliance<br/>RTS 6/27/28"]
+        BASEL["BaselIIICompliance<br/>FRTB-SA"]
+        EMIR["EMIRCompliance<br/>Derivative Reporting"]
+        MAR["MARCompliance<br/>Market Abuse Surveillance"]
+    end
+    MIFID -->|"RTS6 Algorithm Report"| MIFID
+    MIFID -->|"RTS27 Transaction Report"| MIFID
+    MIFID -->|"RTS28 Execution Quality"| MIFID
+    BASEL -->|"FRTB Sensitivity"| BASEL
+    BASEL -->|"Capital Requirement"| BASEL
+    EMIR -->|"Trade Report"| EMIR
+    MAR -->|"Alert Detection"| MAR
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">MiFIDIICompliance</span>
+          <span class="node-chip cyan">BaselIIICompliance</span>
+          <span class="node-chip cyan">EMIRCompliance</span>
+          <span class="node-chip purple">MARCompliance</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">🛑 Kill Switch & Pre-Trade Risk <span class="module-tag">kill_switch.py</span></div>
+        <p class="desc-text">Multi-layered pre-trade risk checks: notional limits, position limits, concentration limits, and velocity limits. CircuitBreaker halts trading on anomaly detection. KillSwitch provides the master emergency stop.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph KS["Kill Switch System"]
+        KS["KillSwitch<br/>Master Emergency Stop"]
+        PTRM["PreTradeRiskManager<br/>Risk Check Orchestrator"]
+        PLM["PositionLimitManager<br/>Position Enforcement"]
+        CB["CircuitBreaker<br/>Anomaly Detection"]
+        NLC["NotionalLimitCheck"]
+        PLC["PositionLimitCheck"]
+        CLC["ConcentrationLimitCheck"]
+        VLC["VelocityLimitCheck"]
+    end
+    PTRM -->|"runs"| NLC
+    PTRM -->|"runs"| PLC
+    PTRM -->|"runs"| CLC
+    PTRM -->|"runs"| VLC
+    PLM -->|"enforces"| PLC
+    CB -->|"triggers"| KS
+    PTRM -->|"blocks on fail"| KS
+    NLC -->|"pass/fail"| PTRM
+    PLC -->|"pass/fail"| PTRM
+    CLC -->|"pass/fail"| PTRM
+    VLC -->|"pass/fail"| PTRM
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">NotionalLimitCheck</span>
+          <span class="node-chip cyan">PositionLimitCheck</span>
+          <span class="node-chip cyan">ConcentrationLimitCheck</span>
+          <span class="node-chip cyan">VelocityLimitCheck</span>
+          <span class="node-chip purple">PreTradeRiskManager</span>
+          <span class="node-chip purple">CircuitBreaker</span>
+          <span class="node-chip emerald">KillSwitch</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">🔒 Immutable Audit Trail <span class="module-tag">audit_trail.py</span></div>
+        <p class="desc-text">SHA-256-chained immutable audit log for regulatory evidence. EvidenceChainManager maintains cryptographic proof of data integrity. RegulatoryReporter generates compliance reports from the audit trail.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph AT["Audit Trail"]
+        AT["AuditTrail<br/>Main Interface"]
+        IAL["ImmutableAuditLog<br/>SHA-256 Chained Log"]
+        ECM["EvidenceChainManager<br/>Cryptographic Proof"]
+        RR["RegulatoryReporter<br/>Report Generation"]
+        AE["AuditEntry<br/>Individual Record"]
+    end
+    AT -->|"writes to"| IAL
+    AT -->|"manages"| ECM
+    AT -->|"generates"| RR
+    IAL -->|"contains"| AE
+    IAL -->|"verified by"| ECM
+    ECM -->|"seals"| AE
+    RR -->|"reads from"| IAL
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">ImmutableAuditLog</span>
+          <span class="node-chip purple">EvidenceChainManager</span>
+          <span class="node-chip emerald">RegulatoryReporter</span>
+          <span class="node-chip amber">AuditTrail</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 3: Payments & Cross-Chain -->
+    <div id="tab-payments" class="panel">
+
+      <div class="glass-card">
+        <div class="card-title">💳 Payment Rails <span class="module-tag">payment_rails.py</span></div>
+        <p class="desc-text">Multi-rail payment processing: RTP (Real-Time Payments), FedNow, SWIFT, SEPA, and stablecoin networks. PaymentRouter selects the optimal rail based on cost, speed, and availability.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph PR["Payment Rails"]
+        PPROC["PaymentProcessor<br/>Abstract Base"]
+        RTP["RTPProcessor<br/>Real-Time Payments"]
+        FN["FedNowProcessor<br/>FedNow Network"]
+        SW["SWIFTProcessor<br/>SWIFT Network"]
+        SEPA["SEPAProcessor<br/>SEPA Network"]
+        SC["StablecoinProcessor<br/>Blockchain Settlement"]
+        PR["PaymentRouter<br/>Rail Selection"]
+    end
+    PPROC -->|"implemented by"| RTP
+    PPROC -->|"implemented by"| FN
+    PPROC -->|"implemented by"| SW
+    PPROC -->|"implemented by"| SEPA
+    PPROC -->|"implemented by"| SC
+    PR -->|"routes to"| RTP
+    PR -->|"routes to"| FN
+    PR -->|"routes to"| SW
+    PR -->|"routes to"| SEPA
+    PR -->|"routes to"| SC
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">RTPProcessor</span>
+          <span class="node-chip cyan">FedNowProcessor</span>
+          <span class="node-chip cyan">SWIFTProcessor</span>
+          <span class="node-chip cyan">SEPAProcessor</span>
+          <span class="node-chip purple">StablecoinProcessor</span>
+          <span class="node-chip emerald">PaymentRouter</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">🌉 Cross-Chain Bridges <span class="module-tag">cross_chain.py</span></div>
+        <p class="desc-text">Cross-chain asset transfers via Hop and Across bridges. ArbitrageEngine detects price discrepancies across chains. AtomicSettlement ensures all-or-nothing cross-chain execution via HTLC.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph CC["Cross-Chain"]
+        BR["Bridge<br/>Abstract Base"]
+        HOP["HopBridge<br/>Hop Protocol"]
+        ACB["AcrossBridge<br/>Across Protocol"]
+        AE["ArbitrageEngine<br/>Price Discrepancy"]
+        AS["AtomicSettlement<br/>HTLC Settlement"]
+    end
+    BR -->|"implemented by"| HOP
+    BR -->|"implemented by"| ACB
+    HOP -->|"locks/mints"| AS
+    ACB -->|"locks/mints"| AS
+    AE -->|"detects"| HOP
+    AE -->|"detects"| ACB
+    AS -->|"settles"| HOP
+    AS -->|"settles"| ACB
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">HopBridge</span>
+          <span class="node-chip cyan">AcrossBridge</span>
+          <span class="node-chip purple">ArbitrageEngine</span>
+          <span class="node-chip emerald">AtomicSettlement</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">🏦 Settlement Engine <span class="module-tag">settlement.py</span></div>
+        <p class="desc-text">Bilateral and multilateral netting, clearing house integration, and real-time gross settlement. NettingEngine calculates net positions, and SettlementEngine orchestrates the full settlement lifecycle.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph SE["Settlement"]
+        SE["SettlementEngine<br/>Lifecycle Orchestrator"]
+        NE["NettingEngine<br/>Net Position Calculation"]
+        CH["ClearingHouse<br/>CCP Interface"]
+        CHI["ClearingHouseInterface<br/>Abstract Interface"]
+    end
+    SE -->|"calculates"| NE
+    SE -->|"clears via"| CH
+    CH -->|"implements"| CHI
+    NE -->|"bilateral netting"| SE
+    NE -->|"multilateral netting"| SE
+    CH -->|"settles"| SE
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">SettlementEngine</span>
+          <span class="node-chip purple">NettingEngine</span>
+          <span class="node-chip emerald">ClearingHouse</span>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">🔍 Fraud Detection <span class="module-tag">fraud_detection.py</span></div>
+        <p class="desc-text">Six detection rules: amount threshold, velocity, high-risk country, round amount, sanctioned address, and structuring. FraudDetectionEngine aggregates rule outputs. AMLComplianceEngine handles sanctions screening. TransactionMonitor provides real-time surveillance.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph FD["Fraud Detection"]
+        FDE["FraudDetectionEngine<br/>Rule Aggregator"]
+        AML["AMLComplianceEngine<br/>Sanctions Screening"]
+        TM["TransactionMonitor<br/>Real-Time Surveillance"]
+        R1["AmountThresholdRule"]
+        R2["VelocityRule"]
+        R3["HighRiskCountryRule"]
+        R4["RoundAmountRule"]
+        R5["SanctionedAddressRule"]
+        R6["StructuringRule"]
+    end
+    FDE -->|"evaluates"| R1
+    FDE -->|"evaluates"| R2
+    FDE -->|"evaluates"| R3
+    FDE -->|"evaluates"| R4
+    FDE -->|"evaluates"| R5
+    FDE -->|"evaluates"| R6
+    AML -->|"screens"| FDE
+    TM -->|"monitors"| FDE
+    R1 -->|"alerts"| FDE
+    R2 -->|"alerts"| FDE
+    R3 -->|"alerts"| FDE
+    R4 -->|"alerts"| FDE
+    R5 -->|"alerts"| FDE
+    R6 -->|"alerts"| FDE
+          </pre>
+        </div>
+        <div class="node-list">
+          <span class="node-chip cyan">AmountThresholdRule</span>
+          <span class="node-chip cyan">VelocityRule</span>
+          <span class="node-chip cyan">HighRiskCountryRule</span>
+          <span class="node-chip cyan">RoundAmountRule</span>
+          <span class="node-chip purple">SanctionedAddressRule</span>
+          <span class="node-chip purple">StructuringRule</span>
+          <span class="node-chip emerald">FraudDetectionEngine</span>
+          <span class="node-chip amber">AMLComplianceEngine</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 4: Integration Architecture -->
+    <div id="tab-integration" class="panel">
+
+      <div class="glass-card">
+        <div class="card-title">🔗 System Integration & Data Flow</div>
+        <p class="desc-text">How all 13 modules connect: market data flows through HFT infrastructure to market making and execution engines. Risk management monitors all trading activity. Kill switch provides emergency override. Payment rails and cross-chain bridges handle fund movement. Settlement nets positions. Fraud detection screens all transactions. Audit trail records everything. Compliance reports to regulators.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart TD
+    subgraph DATA["Data Layer"]
+        FH["FeedHandler<br/>Market Data"]
+        OB["OrderBook<br/>Order State"]
+    end
+
+    subgraph TRADING["Trading Layer"]
+        MM["MarketMakingEngine"]
+        HFT["MatchingEngine"]
+        AMM["ConstantProductAMM"]
+        EX["SmartOrderRouter"]
+    end
+
+    subgraph RISK["Risk Layer"]
+        RM["RiskCalculator<br/>VaR Engine"]
+        KS["KillSwitch<br/>Emergency Stop"]
+        CB["CircuitBreaker"]
+    end
+
+    subgraph PAYMENTS["Payments Layer"]
+        PR["PaymentRouter"]
+        BR["HopBridge"]
+        SE["SettlementEngine"]
+        FD["FraudDetectionEngine"]
+    end
+
+    subgraph GOVERNANCE["Governance Layer"]
+        AT["AuditTrail"]
+        COMP["MiFIDIICompliance"]
+        AML["AMLComplianceEngine"]
+    end
+
+    FH -->|"ticks"| HFT
+    OB -->|"orders"| HFT
+    HFT -->|"trades"| MM
+    MM -->|"quotes"| EX
+    AMM -->|"liquidity"| EX
+    EX -->|"fills"| SE
+    PR -->|"routes"| BR
+    BR -->|"settles"| SE
+    SE -->|"netting"| FD
+    FD -->|"screens"| PR
+    RM -->|"monitors"| MM
+    RM -->|"monitors"| EX
+    CB -->|"halts"| KS
+    KS -->|"blocks"| MM
+    KS -->|"blocks"| EX
+    AT ->|"records"| HFT
+    AT ->|"records"| SE
+    COMP ->|"reports"| AT
+    AML ->|"screens"| FD
+          </pre>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">📡 API & Module Communication</div>
+        <p class="desc-text">Internal module communication patterns: event-driven architecture for trading pipelines, request-response for risk checks, and publish-subscribe for audit events. All modules expose typed Python interfaces with async support for I/O-bound operations.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart LR
+    subgraph INPUT["External Input"]
+        API["REST / WebSocket API"]
+        FIX["FIX Protocol"]
+    end
+
+    subgraph CORE["Core Engine"]
+        MME["MarketMakingEngine"]
+        HFT["MatchingEngine"]
+        EX["ExecutionManager"]
+    end
+
+    subgraph SUPPORT["Support Systems"]
+        RM["Risk Management"]
+        KS["Kill Switch"]
+        FD["Fraud Detection"]
+    end
+
+    subgraph OUTPUT["Output"]
+        SE["Settlement"]
+        AT["Audit Trail"]
+        PR["Payment Rails"]
+    end
+
+    API -->|"orders"| MME
+    API -->|"orders"| EX
+    FIX -->|"orders"| HFT
+    MME -->|"risk check"| RM
+    EX -->|"risk check"| RM
+    RM -->|"approve/deny"| KS
+    KS -->|"halt"| MME
+    KS -->|"halt"| EX
+    HFT -->|"fills"| SE
+    EX -->|"fills"| SE
+    SE -->|"screen"| FD
+    FD -->|"clear/block"| PR
+    MME -->|"log"| AT
+    HFT -->|"log"| AT
+    SE -->|"log"| AT
+          </pre>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="card-title">🧩 Module Dependency Map</div>
+        <p class="desc-text">Dependency flow between modules. Trading modules depend on risk and compliance. Payments depend on fraud detection and settlement. All modules depend on the audit trail for immutable record-keeping.</p>
+        <div class="mermaid-box">
+          <pre class="mermaid">
+flowchart BT
+    subgraph LEAF["Leaf Modules (No Internal Deps)"]
+        AS["AvellanedaStoikov"]
+        AC["AlmgrenChriss"]
+        GM["GlostenMilgrom"]
+        CP["ConstantProductAMM"]
+        CL["ConcentratedLiquidityAMM"]
+        TWAP["TWAPAlgorithm"]
+        VWAP["VWAPAlgorithm"]
+        POV["POVAlgorithm"]
+    end
+
+    subgraph MID["Mid-Level Modules"]
+        MME["MarketMakingEngine"]
+        AMM["AMMFactory"]
+        EX["ExecutionManager"]
+        SOR["SmartOrderRouter"]
+    end
+
+    subgraph TOP["Top-Level Systems"]
+        HFT["MatchingEngine"]
+        RM["RiskCalculator"]
+        KS["KillSwitch"]
+        SE["SettlementEngine"]
+        FD["FraudDetectionEngine"]
+        PR["PaymentRouter"]
+        AT["AuditTrail"]
+    end
+
+    AS -->|"used by"| MME
+    AC -->|"used by"| MME
+    GM -->|"used by"| MME
+    CP -->|"used by"| AMM
+    CL -->|"used by"| AMM
+    TWAP -->|"used by"| EX
+    VWAP -->|"used by"| EX
+    POV -->|"used by"| EX
+    MME -->|"orchestrated by"| HFT
+    AMM -->|"routed via"| SOR
+    EX -->|"routed via"| SOR
+    HFT -->|"monitored by"| RM
+    SOR -->|"guarded by"| KS
+    SE -->|"screened by"| FD
+    PR -->|"settled by"| SE
+    AT -->|"records all"| HFT
+    AT -->|"records all"| SE
+          </pre>
+        </div>
+      </div>
+
+    </div>
+
+    <footer>
+      <div><strong>Apex FinTech Markets</strong> &copy; 2026. All Rights Reserved.</div>
+      <div>13 Core Modules • Python 3.10+ • Institutional Grade</div>
+    </footer>
+
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      themeVariables: {
+        darkMode: true,
+        background: '#090d16',
+        primaryColor: '#1e293b',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#06b6d4',
+        lineColor: '#38bdf8',
+        secondaryColor: '#0f172a',
+        tertiaryColor: '#1e1b4b'
+      }
+    });
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes(tabId));
+      if (targetBtn) targetBtn.classList.add('active');
+      const targetPanel = document.getElementById(tabId);
+      if (targetPanel) targetPanel.classList.add('active');
+    }
+  </script>
+</body>
+</html>
